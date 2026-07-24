@@ -1,0 +1,17 @@
+stages:
+  prepare:
+    cmd: python -m src.ml_project.pipeline prepare
+    deps:
+      - src/ml_project/pipeline.py
+    outs:
+      - data/processed
+
+  train:
+    cmd: python -m src.ml_project.pipeline train
+    deps:
+      - data/processed
+      - src/ml_project/pipeline.py
+    params:
+      - configs/params.yaml
+    outs:
+      - models/model.joblib
