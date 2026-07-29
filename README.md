@@ -70,6 +70,7 @@ just install
 just lint
 just test
 just train
+just serve-docs
 ```
 
 ## Variáveis de ambiente

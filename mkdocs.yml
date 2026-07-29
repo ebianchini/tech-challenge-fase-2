@@ -1,0 +1,12 @@
+site_name: Tech Challenge Fase 2
+site_description: Documentação do projeto de Machine Learning
+site_author: MLEKs
+repo_url: https://github.com/DioniSilva/tech-challenge-fase-1
+
+theme:
+  name: mkdocs
+
+nav:
+  - Início: index.md
+  - Projeto:
+      - Visão geral (ML Canvas): mlcanvas.md
