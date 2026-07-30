@@ -15,3 +15,6 @@ train:
 
 dvc-repro:
     uv run dvc repro
+
+serve-docs:
+    uv run mkdocs serve
