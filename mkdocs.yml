@@ -1,0 +1,12 @@
+site_name: Tech Challenge Fase 2
+site_description: Documentação do projeto de Machine Learning
+site_author: MLEKs
+repo_url: https://github.com/ebianchini/tech-challenge-fase-2
+
+theme:
+  name: mkdocs
+
+nav:
+  - Início: index.md
+  - Projeto:
+      - Visão geral (ML Canvas): mlcanvas.md
