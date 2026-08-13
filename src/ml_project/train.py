@@ -50,7 +50,7 @@ def train() -> None:
         mlflow.log_param("test_size", model_cfg["test_size"])
         mlflow.log_param("random_state", model_cfg["random_state"])
         mlflow.log_metric("accuracy", score)
-        mlflow.sklearn.log_model(pipeline, artifact_path="model")
+        mlflow.sklearn.log_model(pipeline, artifact_path="model", env_manager="uv")
 
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         with (MODELS_DIR / "model.joblib").open("wb") as file:
