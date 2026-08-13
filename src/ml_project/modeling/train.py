@@ -8,9 +8,11 @@ import mlflow
 import numpy as np
 import yaml
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score)
 
-from src.ml_project.config import MLFLOW_EXPERIMENT_NAME, MLFLOW_TRACKING_URI, MODELS_DIR
+from src.ml_project.config import (MLFLOW_EXPERIMENT_NAME, MLFLOW_TRACKING_URI,
+                                   MODELS_DIR)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIGS_DIR = ROOT / "configs"
@@ -64,7 +66,7 @@ def train() -> None:
             }
         )
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(classifier, artifact_path="model")
+        mlflow.sklearn.log_model(classifier, artifact_path="model", env_manager="uv")
 
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         model_path = MODELS_DIR / "model.joblib"
