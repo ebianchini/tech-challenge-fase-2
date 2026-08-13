@@ -1,0 +1,58 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python -m src.ml_project.pipeline prepare
+    deps:
+    - path: data/raw/online_shoppers_intention.csv
+      hash: md5
+      md5: cc6ec1db03b4f10f8de52c56ff48b085
+      size: 1072063
+    - path: src/ml_project/config.py
+      hash: md5
+      md5: 6ba5568102c9ed2451e43c879990438c
+      size: 1229
+    - path: src/ml_project/dataset.py
+      hash: md5
+      md5: dcb01a4e7606d3bb2747e02a2c25b9d4
+      size: 1315
+    - path: src/ml_project/features.py
+      hash: md5
+      md5: f7d2585ead4c79c41ba42b59558c161e
+      size: 2676
+    - path: src/ml_project/pipeline.py
+      hash: md5
+      md5: d079c09a143108e8f3663e19f8d9fbc4
+      size: 1536
+    - path: src/ml_project/preprocessing.py
+      hash: md5
+      md5: 2f8a4ad33acf6813f2b2fac190744794
+      size: 2156
+    outs:
+    - path: data/interim/online_shoppers_clean.csv
+      hash: md5
+      md5: aad39ccafa885f5c4fb248f78c31ee11
+      size: 1159694
+    - path: data/processed/online_shoppers_processed.npz
+      hash: md5
+      md5: 5e5d51bdbd56b59c47cf182392019eb4
+      size: 12713226
+  train:
+    cmd: python -m src.ml_project.modeling.train
+    deps:
+    - path: data/processed/online_shoppers_processed.npz
+      hash: md5
+      md5: 5e5d51bdbd56b59c47cf182392019eb4
+      size: 12713226
+    - path: src/ml_project/config.py
+      hash: md5
+      md5: 6ba5568102c9ed2451e43c879990438c
+      size: 1229
+    - path: src/ml_project/modeling/train.py
+      hash: md5
+      md5: 419be8675a9aa232bcbb5289ebf17979
+      size: 2850
+    outs:
+    - path: models/model.joblib
+      hash: md5
+      md5: 1446fc404d60a05ae9272cb30bf26933
+      size: 8868457
