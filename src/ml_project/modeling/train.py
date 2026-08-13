@@ -66,7 +66,7 @@ def train() -> None:
             }
         )
         mlflow.log_metrics(metrics)
-        mlflow.sklearn.log_model(classifier, artifact_path="model", env_manager="uv")
+        mlflow.sklearn.log_model(classifier, artifact_path="model")
 
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
         model_path = MODELS_DIR / "model.joblib"

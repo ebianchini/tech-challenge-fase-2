@@ -11,7 +11,7 @@ test:
     uv run pytest -q
 
 train:
-    uv run python -m src.ml_project.train
+    uv run python -m src.ml_project.modeling.train
 
 # Inicializa o DVC no projeto (caso ainda não tenha sido feito)
 dvc-init:
