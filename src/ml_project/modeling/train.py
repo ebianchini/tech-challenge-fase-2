@@ -8,8 +8,8 @@ import mlflow
 import numpy as np
 import yaml
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (accuracy_score, f1_score, precision_score,
-                             recall_score)
+from sklearn.metrics import (accuracy_score, average_precision_score, f1_score,
+                             precision_score, recall_score, roc_auc_score)
 
 from src.ml_project.config import (MLFLOW_EXPERIMENT_NAME, MLFLOW_TRACKING_URI,
                                    MODELS_DIR)
@@ -48,12 +48,15 @@ def train() -> None:
     with mlflow.start_run() as run:
         classifier.fit(X_train, y_train)
         predictions = classifier.predict(X_test)
+        probabilities = classifier.predict_proba(X_test)[:, 1]
 
         metrics = {
             "accuracy": accuracy_score(y_test, predictions),
             "precision": precision_score(y_test, predictions, zero_division=0),
             "recall": recall_score(y_test, predictions, zero_division=0),
             "f1": f1_score(y_test, predictions, zero_division=0),
+            "roc_auc": roc_auc_score(y_test, probabilities),
+            "pr_auc": average_precision_score(y_test, probabilities),
         }
 
         mlflow.log_params(
@@ -72,7 +75,13 @@ def train() -> None:
         model_path = MODELS_DIR / "model.joblib"
         joblib.dump(classifier, model_path)
 
-        print(f"RUN_ID={run.info.run_id} ACCURACY={metrics['accuracy']:.4f} F1={metrics['f1']:.4f}")
+        print(
+            f"RUN_ID={run.info.run_id} "
+            f"ACCURACY={metrics['accuracy']:.4f} "
+            f"F1={metrics['f1']:.4f} "
+            f"ROC_AUC={metrics['roc_auc']:.4f} "
+            f"PR_AUC={metrics['pr_auc']:.4f}"
+        )
 
 
 if __name__ == "__main__":

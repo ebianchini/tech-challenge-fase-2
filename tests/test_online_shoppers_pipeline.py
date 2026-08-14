@@ -4,6 +4,7 @@ import pandas as pd
 
 from src.ml_project.dataset import drop_duplicate_rows, load_raw_dataset
 from src.ml_project.features import add_session_features
+from src.ml_project.modeling.train import train
 from src.ml_project.preprocessing import prepare_model_data
 
 
@@ -52,3 +53,11 @@ def test_preprocessing_builds_train_test_split_and_targets() -> None:
     assert len(y_test) == X_test.shape[0]
     assert set(y_train.unique()).issubset({0, 1})
     assert set(y_test.unique()).issubset({0, 1})
+
+
+def test_training_logs_auc_metrics(capsys) -> None:
+    train()
+    output = capsys.readouterr().out
+
+    assert "ROC_AUC=" in output
+    assert "PR_AUC=" in output
