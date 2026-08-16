@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import random
 from pathlib import Path
+
+import numpy as np
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT_DIR / "data"
@@ -12,8 +15,19 @@ MODELS_DIR = ROOT_DIR / "models"
 MLRUNS_DIR = ROOT_DIR / "mlruns"
 
 TARGET_COLUMN = "Revenue"
-RANDOM_STATE = 42
+SEED = 42
+RANDOM_STATE = SEED
 TEST_SIZE = 0.2
+
+
+def set_global_seed(seed: int = SEED) -> int:
+    """Define a seed global para garantir reprodutibilidade em numpy, random e sklearn."""
+    random.seed(seed)
+    np.random.seed(seed)
+    return seed
+
+
+set_global_seed(SEED)
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "online-shoppers-purchasing-intention")
