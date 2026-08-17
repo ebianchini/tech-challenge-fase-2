@@ -1269,6 +1269,24 @@ wheels = [
 ]
 
 [[package]]
+name = "imbalanced-learn"
+version = "0.12.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "scikit-learn" },
+    { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "threadpoolctl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/30/41/8b15f1df14ff38f1fdd4eb2b128478d99c38db4a14292270639ae9d65447/imbalanced-learn-0.12.4.tar.gz", hash = "sha256:8153ba385d296b07d97e0901a2624a86c06b48c94c2f92da3a5354827697b7a3", size = 478372, upload-time = "2024-10-04T17:00:55.162Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/0d/c3bfccc5d460eec8ff56889802aa88f5d07280d5282b307a74558e6edc44/imbalanced_learn-0.12.4-py3-none-any.whl", hash = "sha256:d47fc599160d3ea882e712a3a6b02bdd353c1a6436d8d68d41b1922e6ee4a703", size = 258324, upload-time = "2024-10-04T17:00:52.715Z" },
+]
+
+[[package]]
 name = "importlib-metadata"
 version = "8.9.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3517,7 +3535,10 @@ name = "tech-challenge-fase-2"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "imbalanced-learn" },
     { name = "mlflow-skinny" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas" },
     { name = "pyyaml" },
     { name = "scikit-learn" },
@@ -3539,10 +3560,12 @@ notebook = [
 [package.metadata]
 requires-dist = [
     { name = "dvc", marker = "extra == 'dev'", specifier = ">=3.0,<4.0" },
+    { name = "imbalanced-learn", specifier = ">=0.12,<0.13" },
     { name = "ipykernel", marker = "extra == 'notebook'", specifier = ">=6.29,<7.0" },
     { name = "jupyter", marker = "extra == 'notebook'", specifier = ">=1.1.1" },
     { name = "matplotlib", marker = "extra == 'notebook'", specifier = ">=3.8,<4.0" },
     { name = "mlflow-skinny", specifier = ">=2.16,<3.0" },
+    { name = "numpy", specifier = ">=1.26,<3.0" },
     { name = "pandas", specifier = ">=2.2,<3.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0,<9.0" },
     { name = "pyyaml", specifier = ">=6.0,<7.0" },

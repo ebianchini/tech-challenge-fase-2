@@ -2,16 +2,21 @@ stages:
   prepare:
     cmd: python -m src.ml_project.pipeline prepare
     deps:
+      - data/raw/online_shoppers_intention.csv
+      - src/ml_project/config.py
+      - src/ml_project/dataset.py
+      - src/ml_project/features.py
+      - src/ml_project/preprocessing.py
       - src/ml_project/pipeline.py
     outs:
-      - data/processed
+      - data/interim/online_shoppers_clean.csv
+      - data/processed/online_shoppers_processed.npz
 
   train:
-    cmd: python -m src.ml_project.pipeline train
+    cmd: python -m src.ml_project.modeling.train
     deps:
-      - data/processed
-      - src/ml_project/pipeline.py
-    params:
-      - configs/params.yaml
+      - data/processed/online_shoppers_processed.npz
+      - src/ml_project/modeling/train.py
+      - src/ml_project/config.py
     outs:
       - models/model.joblib
