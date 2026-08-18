@@ -1,11 +1,19 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
 
-from src.ml_project.config import DATA_DIR, PROCESSED_DIR, RANDOM_STATE, TEST_SIZE
+from src.ml_project.config import (
+    DATA_DIR,
+    PROCESSED_DATA_PATH,
+    PROCESSED_DIR,
+    PROCESSED_METADATA_PATH,
+    RANDOM_STATE,
+    TEST_SIZE,
+)
 from src.ml_project.dataset import prepare_interim_dataset
 from src.ml_project.features import add_session_features
 from src.ml_project.preprocessing import prepare_model_data
@@ -18,21 +26,24 @@ def prepare() -> Path:
 
     cleaned = prepare_interim_dataset()
     engineered = add_session_features(cleaned)
-    X_train, X_test, y_train, y_test = prepare_model_data(
+    X_train, X_test, y_train, y_test, metadata = prepare_model_data(
         engineered,
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
     )
 
-    processed_path = PROCESSED_DIR / "online_shoppers_processed.npz"
     np.savez(
-        processed_path,
+        PROCESSED_DATA_PATH,
         X_train=X_train.to_numpy(),
         X_test=X_test.to_numpy(),
         y_train=y_train.to_numpy(),
         y_test=y_test.to_numpy(),
     )
-    return processed_path
+    PROCESSED_METADATA_PATH.write_text(
+        json.dumps(metadata, indent=2, ensure_ascii=True),
+        encoding="utf-8",
+    )
+    return PROCESSED_DATA_PATH
 
 
 def main() -> None:

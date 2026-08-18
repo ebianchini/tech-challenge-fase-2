@@ -11,11 +11,13 @@ stages:
     outs:
       - data/interim/online_shoppers_clean.csv
       - data/processed/online_shoppers_processed.npz
+      - data/processed/online_shoppers_metadata.json
 
   train:
     cmd: python -m src.ml_project.modeling.train
     deps:
       - data/processed/online_shoppers_processed.npz
+      - data/processed/online_shoppers_metadata.json
       - src/ml_project/modeling/train.py
       - src/ml_project/config.py
     outs:
