@@ -54,13 +54,36 @@ source .venv/bin/activate
 ## Execução rápida
 
 ```bash
-uv run python -m src.ml_project.train
+python -m src.ml_project.pipeline prepare
+python -m src.ml_project.modeling.train
 ```
 
 ## Pipeline com DVC
 
 ```bash
 dvc repro
+```
+
+Na Fase 2, a etapa `prepare` também gera `data/processed/online_shoppers_metadata.json` com:
+
+- fingerprint do dataset;
+- distribuição da variável alvo;
+- schema esperado e tipos inferidos;
+- colunas categóricas, numéricas e features codificadas.
+
+O treino passa a registrar no MLflow:
+
+- benchmark com `LogisticRegression` e `RandomForest`;
+- benchmark opcional com `XGBoost` quando a dependência estiver instalada;
+- métricas de validação cruzada;
+- classificação por classe, matriz de confusão e curvas ROC/PR;
+- threshold otimizado para F1;
+- metadata de preprocessing e fingerprint do dataset.
+
+Para habilitar o benchmark opcional com `XGBoost`, instale o extra:
+
+```bash
+uv sync --extra benchmark
 ```
 
 ## Automação com `just`

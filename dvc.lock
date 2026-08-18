@@ -9,8 +9,8 @@ stages:
       size: 1072063
     - path: src/ml_project/config.py
       hash: md5
-      md5: 6ba5568102c9ed2451e43c879990438c
-      size: 1229
+      md5: 23fd0eed8c4ff57fef2bb0aad051737f
+      size: 2099
     - path: src/ml_project/dataset.py
       hash: md5
       md5: dcb01a4e7606d3bb2747e02a2c25b9d4
@@ -21,38 +21,46 @@ stages:
       size: 2676
     - path: src/ml_project/pipeline.py
       hash: md5
-      md5: d079c09a143108e8f3663e19f8d9fbc4
-      size: 1536
+      md5: 30b09b479f644a649ab11204b096fe89
+      size: 1677
     - path: src/ml_project/preprocessing.py
       hash: md5
-      md5: 2f8a4ad33acf6813f2b2fac190744794
-      size: 2156
+      md5: 97834f807849acb9a0a7a36bc302e7f7
+      size: 5720
     outs:
     - path: data/interim/online_shoppers_clean.csv
       hash: md5
       md5: aad39ccafa885f5c4fb248f78c31ee11
       size: 1159694
+    - path: data/processed/online_shoppers_metadata.json
+      hash: md5
+      md5: bf9567fac34dfd1ab1bf7528868e56d4
+      size: 5410
     - path: data/processed/online_shoppers_processed.npz
       hash: md5
-      md5: 5e5d51bdbd56b59c47cf182392019eb4
-      size: 12713226
+      md5: dc4cc02d51b9ded48a03f2837b65d0c6
+      size: 12561890
   train:
     cmd: python -m src.ml_project.modeling.train
     deps:
+    - path: data/processed/online_shoppers_metadata.json
+      hash: md5
+      md5: bf9567fac34dfd1ab1bf7528868e56d4
+      size: 5410
     - path: data/processed/online_shoppers_processed.npz
       hash: md5
-      md5: 5e5d51bdbd56b59c47cf182392019eb4
-      size: 12713226
+      md5: dc4cc02d51b9ded48a03f2837b65d0c6
+      size: 12561890
     - path: src/ml_project/config.py
       hash: md5
-      md5: 6ba5568102c9ed2451e43c879990438c
-      size: 1229
+      md5: 23fd0eed8c4ff57fef2bb0aad051737f
+      size: 2099
     - path: src/ml_project/modeling/train.py
       hash: md5
-      md5: 419be8675a9aa232bcbb5289ebf17979
-      size: 2850
+      md5: 1eb6a5a009f91137ef393a361e5bc4ae
+      size: 12325
     outs:
     - path: models/model.joblib
       hash: md5
-      md5: 1446fc404d60a05ae9272cb30bf26933
-      size: 8868457
+      md5: 59bb7663c36d444dd0e62271a732c5b8
+      size: 8655657
