@@ -71,6 +71,11 @@ Na Fase 2, a etapa `prepare` também gera `data/processed/online_shoppers_metada
 - schema esperado e tipos inferidos;
 - colunas categóricas, numéricas e features codificadas.
 
+Na Fase 3, o contrato de entrada e saída da inferência está documentado em
+[docs/inference-contract.md](docs/inference-contract.md). O contrato define as 17 colunas brutas
+obrigatórias, seus tipos e restrições, o payload JSON em lote e o formato de resposta padronizado.
+As features derivadas e a coluna `Revenue` são internas ao pipeline e não devem ser enviadas.
+
 O treino passa a registrar no MLflow:
 
 - benchmark com `LogisticRegression` e `RandomForest`;
