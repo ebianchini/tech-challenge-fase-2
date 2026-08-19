@@ -9,8 +9,8 @@ import mlflow
 import numpy as np
 import pandas as pd
 import yaml
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.base import ClassifierMixin
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
@@ -86,7 +86,7 @@ def build_benchmark_models(
 
 
 def load_training_inputs(
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, dict[str, object]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, dict[str, object]]:
     """Carrega arrays processados e os metadados gerados na etapa de prepare."""
     if not PROCESSED_DATA_PATH.exists():
         logger.error("Arquivo processado nao encontrado em {}", PROCESSED_DATA_PATH)
@@ -102,7 +102,16 @@ def load_training_inputs(
         y_test = data["y_test"]
 
     metadata = json.loads(PROCESSED_METADATA_PATH.read_text(encoding="utf-8"))
-    return X_train, X_test, y_train, y_test, metadata
+    encoded_feature_names = metadata["encoded_feature_names"]
+    target_name = metadata.get("target_column", "Revenue")
+
+    return (
+        pd.DataFrame(X_train, columns=encoded_feature_names),
+        pd.DataFrame(X_test, columns=encoded_feature_names),
+        pd.Series(y_train, name=target_name),
+        pd.Series(y_test, name=target_name),
+        metadata,
+    )
 
 
 def evaluate_classifier(
