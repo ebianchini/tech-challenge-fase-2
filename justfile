@@ -15,6 +15,9 @@ test:
 train:
     uv run python -m src.ml_project.modeling.train
 
+api:
+    uv run uvicorn src.ml_project.api:app --host 0.0.0.0 --port 8000
+
 # Inicializa o DVC no projeto (caso ainda não tenha sido feito)
 dvc-init:
     uv run dvc init
