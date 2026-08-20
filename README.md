@@ -75,6 +75,14 @@ Na Fase 3, o contrato de entrada e saída da inferência está documentado em
 [docs/inference-contract.md](docs/inference-contract.md). O contrato define as 17 colunas brutas
 obrigatórias, seus tipos e restrições, o payload JSON em lote e o formato de resposta padronizado.
 As features derivadas e a coluna `Revenue` são internas ao pipeline e não devem ser enviadas.
+A API de inferência foi implementada com FastAPI em `src/ml_project/api.py`, expondo `/health`
+e `/predict`, com validação de payload, erros padronizados e logs por requisição.
+
+Para executar a API localmente:
+
+```bash
+just api
+```
 
 O treino passa a registrar no MLflow:
 
