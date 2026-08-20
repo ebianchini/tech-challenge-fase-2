@@ -9,8 +9,8 @@ stages:
       size: 1072063
     - path: src/ml_project/config.py
       hash: md5
-      md5: 23fd0eed8c4ff57fef2bb0aad051737f
-      size: 2099
+      md5: 0d9c83bbe3c33c1079bdd93ce54ca3c3
+      size: 2540
     - path: src/ml_project/dataset.py
       hash: md5
       md5: dcb01a4e7606d3bb2747e02a2c25b9d4
@@ -21,12 +21,12 @@ stages:
       size: 2676
     - path: src/ml_project/pipeline.py
       hash: md5
-      md5: 30b09b479f644a649ab11204b096fe89
-      size: 1677
+      md5: 7bd4adeade09fcb5c69416d2da512a69
+      size: 1800
     - path: src/ml_project/preprocessing.py
       hash: md5
-      md5: 97834f807849acb9a0a7a36bc302e7f7
-      size: 5720
+      md5: 0b2b9f7c51051a797e5abbe20ca40ec1
+      size: 9178
     outs:
     - path: data/interim/online_shoppers_clean.csv
       hash: md5
@@ -34,33 +34,53 @@ stages:
       size: 1159694
     - path: data/processed/online_shoppers_metadata.json
       hash: md5
-      md5: bf9567fac34dfd1ab1bf7528868e56d4
-      size: 5410
+      md5: 7f3acac1f35925188b1d89cef5a5d1df
+      size: 5441
     - path: data/processed/online_shoppers_processed.npz
       hash: md5
       md5: dc4cc02d51b9ded48a03f2837b65d0c6
       size: 12561890
+    - path: data/processed/preprocessor.joblib
+      hash: md5
+      md5: fc1619f2cb5a5916a6892fc8a42ebcf3
+      size: 4700
   train:
     cmd: python -m src.ml_project.modeling.train
     deps:
     - path: data/processed/online_shoppers_metadata.json
       hash: md5
-      md5: bf9567fac34dfd1ab1bf7528868e56d4
-      size: 5410
+      md5: 7f3acac1f35925188b1d89cef5a5d1df
+      size: 5441
     - path: data/processed/online_shoppers_processed.npz
       hash: md5
       md5: dc4cc02d51b9ded48a03f2837b65d0c6
       size: 12561890
     - path: src/ml_project/config.py
       hash: md5
-      md5: 23fd0eed8c4ff57fef2bb0aad051737f
-      size: 2099
+      md5: 0d9c83bbe3c33c1079bdd93ce54ca3c3
+      size: 2540
     - path: src/ml_project/modeling/train.py
       hash: md5
-      md5: 1eb6a5a009f91137ef393a361e5bc4ae
-      size: 12325
+      md5: 70ae942fbf2025bd79399ce561153e0b
+      size: 20220
     outs:
+    - path: models/feature_names.json
+      hash: md5
+      md5: 5240cf1b3a3bc6e7d4d2bfb5e9c411bd
+      size: 3915
     - path: models/model.joblib
       hash: md5
-      md5: 59bb7663c36d444dd0e62271a732c5b8
-      size: 8655657
+      md5: 87a8f92a9446cfda6c4d84bac1566c43
+      size: 8658233
+    - path: models/model_metadata.json
+      hash: md5
+      md5: 706fdb586fabc71656910cded4b3d63e
+      size: 7582
+    - path: models/preprocessor.joblib
+      hash: md5
+      md5: 11c6f506e63f8c172b23c89eeaf6eb21
+      size: 4830
+    - path: models/version_info.json
+      hash: md5
+      md5: 0abe57577651df0d93b5686cf8aa40cf
+      size: 2014

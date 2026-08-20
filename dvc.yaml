@@ -12,6 +12,7 @@ stages:
       - data/interim/online_shoppers_clean.csv
       - data/processed/online_shoppers_processed.npz
       - data/processed/online_shoppers_metadata.json
+      - data/processed/preprocessor.joblib
 
   train:
     cmd: python -m src.ml_project.modeling.train
@@ -22,3 +23,7 @@ stages:
       - src/ml_project/config.py
     outs:
       - models/model.joblib
+      - models/feature_names.json
+      - models/preprocessor.joblib
+      - models/model_metadata.json
+      - models/version_info.json

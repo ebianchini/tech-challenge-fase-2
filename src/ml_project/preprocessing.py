@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterable
+from pathlib import Path
 
+import joblib
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.compose import ColumnTransformer
@@ -181,6 +183,7 @@ def prepare_model_data(
     test_size: float = TEST_SIZE,
     random_state: int = RANDOM_STATE,
     target_column: str = TARGET_COLUMN,
+    preprocessor_output_path: str | Path | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, dict[str, object]]:
     """Aplica split, encoding e balanceamento SMOTE, retornando tambem metadados."""
     quality_report = validate_dataset_quality(
@@ -204,6 +207,11 @@ def prepare_model_data(
     X_train_encoded = preprocessor.fit_transform(X_train_raw)
     X_test_encoded = preprocessor.transform(X_test_raw)
     feature_names = preprocessor.get_feature_names_out().tolist()
+
+    if preprocessor_output_path is not None:
+        output_path = Path(preprocessor_output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        joblib.dump(preprocessor, output_path)
 
     smote = SMOTE(random_state=random_state)
     X_train_resampled, y_train_resampled = smote.fit_resample(X_train_encoded, y_train)
