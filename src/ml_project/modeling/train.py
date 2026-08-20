@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
@@ -26,15 +28,25 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import StratifiedKFold, cross_validate
 
+from src.ml_project import __version__
 from src.ml_project.config import (
     CROSS_VALIDATION_FOLDS,
+    INFERENCE_CONTRACT_VERSION,
     MLFLOW_EXPERIMENT_NAME,
     MLFLOW_TRACKING_URI,
+    MODEL_FEATURE_NAMES_PATH,
+    MODEL_METADATA_PATH,
+    MODEL_PATH,
+    MODEL_PREPROCESSOR_PATH,
+    MODEL_VERSION_INFO_PATH,
     MODELS_DIR,
     PROCESSED_DATA_PATH,
     PROCESSED_METADATA_PATH,
+    PROCESSED_PREPROCESSOR_PATH,
     RANDOM_STATE,
+    RAW_DATASET_COLUMNS,
     SEED,
+    TARGET_COLUMN,
     set_global_seed,
 )
 from src.ml_project.logging import logger
@@ -50,6 +62,61 @@ SCORING = {
     "roc_auc": "roc_auc",
     "pr_auc": "average_precision",
 }
+
+
+def run_git_command(args: list[str]) -> str | None:
+    """Executa consultas git sem falhar o treino quando o repositorio nao estiver disponivel."""
+    try:
+        completed = subprocess.run(
+            ["git", *args],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return completed.stdout.strip() or None
+
+
+def read_dvc_dataset_version() -> dict[str, object]:
+    """Extrai hashes DVC conhecidos do dataset bruto e artefatos processados."""
+    dvc_lock_path = ROOT / "dvc.lock"
+    if not dvc_lock_path.exists():
+        return {"dvc_lock_available": False}
+
+    lock_data = yaml.safe_load(dvc_lock_path.read_text(encoding="utf-8")) or {}
+    prepare_stage = lock_data.get("stages", {}).get("prepare", {})
+    versioned_paths: dict[str, dict[str, object]] = {}
+    for section in ("deps", "outs"):
+        for artifact in prepare_stage.get(section, []):
+            path = artifact.get("path")
+            if path is None:
+                continue
+            versioned_paths[path] = {
+                "hash": artifact.get("hash"),
+                "md5": artifact.get("md5"),
+                "size": artifact.get("size"),
+            }
+
+    return {
+        "dvc_lock_available": True,
+        "artifacts": versioned_paths,
+    }
+
+
+def collect_version_info(metadata: dict[str, object]) -> dict[str, object]:
+    """Monta rastreabilidade de codigo e dataset para inferencia em producao."""
+    git_status = run_git_command(["status", "--porcelain"])
+    return {
+        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "package_version": __version__,
+        "git_commit": run_git_command(["rev-parse", "HEAD"]),
+        "git_branch": run_git_command(["branch", "--show-current"]),
+        "git_dirty": git_status is not None and git_status != "",
+        "dataset_fingerprint": metadata["dataset_fingerprint"],
+        "dataset_dvc": read_dvc_dataset_version(),
+    }
 
 
 def build_benchmark_models(
@@ -263,6 +330,88 @@ def save_artifacts(
     return artifact_dir
 
 
+def save_production_artifacts(
+    classifier: ClassifierMixin,
+    model_cfg: dict[str, object],
+    default_metrics: dict[str, float],
+    tuned_metrics: dict[str, float],
+    metadata: dict[str, object],
+    tuned_threshold: float,
+    mlflow_run_id: str,
+) -> dict[str, Path]:
+    """Persiste os artefatos complementares usados pela inferencia de producao."""
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    encoded_feature_names = metadata["encoded_feature_names"]
+    raw_feature_names = [column for column in RAW_DATASET_COLUMNS if column != TARGET_COLUMN]
+
+    feature_names_payload = {
+        "raw_feature_names": raw_feature_names,
+        "engineered_feature_names": [
+            *metadata["categorical_columns"],
+            *metadata["numeric_columns"],
+        ],
+        "encoded_feature_names": encoded_feature_names,
+        "encoded_feature_count": len(encoded_feature_names),
+    }
+    MODEL_FEATURE_NAMES_PATH.write_text(
+        json.dumps(feature_names_payload, indent=2, ensure_ascii=True),
+        encoding="utf-8",
+    )
+
+    if not PROCESSED_PREPROCESSOR_PATH.exists():
+        raise FileNotFoundError(
+            f"Preprocessor ajustado nao encontrado: {PROCESSED_PREPROCESSOR_PATH}"
+        )
+    preprocessor = joblib.load(PROCESSED_PREPROCESSOR_PATH)
+    joblib.dump(preprocessor, MODEL_PREPROCESSOR_PATH)
+
+    version_info = collect_version_info(metadata)
+    MODEL_VERSION_INFO_PATH.write_text(
+        json.dumps(version_info, indent=2, ensure_ascii=True),
+        encoding="utf-8",
+    )
+
+    model_metadata_payload = {
+        "model_artifact": MODEL_PATH.name,
+        "preprocessor_artifact": MODEL_PREPROCESSOR_PATH.name,
+        "feature_names_artifact": MODEL_FEATURE_NAMES_PATH.name,
+        "version_info_artifact": MODEL_VERSION_INFO_PATH.name,
+        "contract_version": INFERENCE_CONTRACT_VERSION,
+        "model_type": classifier.__class__.__name__,
+        "model_params": classifier.get_params(),
+        "training_params": {
+            "random_state": model_cfg.get("random_state", RANDOM_STATE),
+            "seed": SEED,
+            "test_size": metadata["test_size"],
+            "cv_folds": CROSS_VALIDATION_FOLDS,
+        },
+        "mlflow_run_id": mlflow_run_id,
+        "dataset_fingerprint": metadata["dataset_fingerprint"],
+        "target_column": metadata["target_column"],
+        "feature_count": len(encoded_feature_names),
+        "default_threshold_metrics": default_metrics,
+        "tuned_threshold_metrics": tuned_metrics,
+        "chosen_threshold": tuned_threshold,
+        "preprocessing": {
+            "categorical_columns": metadata["categorical_columns"],
+            "numeric_columns": metadata["numeric_columns"],
+            "encoded_feature_names": encoded_feature_names,
+        },
+        "version_info": version_info,
+    }
+    MODEL_METADATA_PATH.write_text(
+        json.dumps(model_metadata_payload, indent=2, ensure_ascii=True),
+        encoding="utf-8",
+    )
+
+    return {
+        "feature_names": MODEL_FEATURE_NAMES_PATH,
+        "preprocessor": MODEL_PREPROCESSOR_PATH,
+        "model_metadata": MODEL_METADATA_PATH,
+        "version_info": MODEL_VERSION_INFO_PATH,
+    }
+
+
 def train() -> None:
     set_global_seed(SEED)
     logger.info("Iniciando treino do modelo com seed global fixa = {}", SEED)
@@ -357,8 +506,17 @@ def train() -> None:
         mlflow.sklearn.log_model(classifier, artifact_path="model")
 
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
-        model_path = MODELS_DIR / "model.joblib"
-        joblib.dump(classifier, model_path)
+        joblib.dump(classifier, MODEL_PATH)
+
+        production_artifacts = save_production_artifacts(
+            classifier=classifier,
+            model_cfg=model_cfg,
+            default_metrics=default_metrics,
+            tuned_metrics=tuned_metrics,
+            metadata=metadata,
+            tuned_threshold=tuned_threshold,
+            mlflow_run_id=run.info.run_id,
+        )
 
         artifact_dir = save_artifacts(
             benchmark_df=benchmark_df,
@@ -371,6 +529,9 @@ def train() -> None:
         )
         mlflow.log_artifacts(str(artifact_dir), artifact_path="reports")
         mlflow.log_dict(metadata, "reports/preprocessing_metadata.json")
+        for artifact_name, artifact_path in production_artifacts.items():
+            mlflow.log_artifact(str(artifact_path), artifact_path="production")
+            logger.info("Artefato de producao persistido: {}={}", artifact_name, artifact_path)
 
         logger.info(
             "RUN_ID={} ACCURACY={:.4f} F1={:.4f} ROC_AUC={:.4f} PR_AUC={:.4f} THRESHOLD={:.4f}",

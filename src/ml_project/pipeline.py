@@ -11,6 +11,7 @@ from src.ml_project.config import (
     PROCESSED_DATA_PATH,
     PROCESSED_DIR,
     PROCESSED_METADATA_PATH,
+    PROCESSED_PREPROCESSOR_PATH,
     RANDOM_STATE,
     TEST_SIZE,
 )
@@ -30,6 +31,7 @@ def prepare() -> Path:
         engineered,
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
+        preprocessor_output_path=PROCESSED_PREPROCESSOR_PATH,
     )
 
     np.savez(

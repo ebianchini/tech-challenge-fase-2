@@ -13,13 +13,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.ml_project.config import (
     INFERENCE_CONTRACT_VERSION,
     MAX_PREDICTION_INSTANCES,
-    MODELS_DIR,
+    MODEL_PATH,
     PROCESSED_METADATA_PATH,
 )
 from src.ml_project.logging import logger
 from src.ml_project.modeling.predict import predict
 
-DEFAULT_MODEL_PATH = MODELS_DIR / "model.joblib"
+DEFAULT_MODEL_PATH = MODEL_PATH
 
 
 class InferenceInstance(BaseModel):
