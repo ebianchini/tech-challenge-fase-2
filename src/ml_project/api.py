@@ -10,12 +10,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.ml_project.config import (
-    INFERENCE_CONTRACT_VERSION,
-    MAX_PREDICTION_INSTANCES,
-    MODEL_PATH,
-    PROCESSED_METADATA_PATH,
-)
+from src.ml_project.config import (INFERENCE_CONTRACT_VERSION,
+                                   MAX_PREDICTION_INSTANCES, MODEL_PATH,
+                                   PROCESSED_METADATA_PATH)
 from src.ml_project.logging import logger
 from src.ml_project.modeling.predict import predict
 

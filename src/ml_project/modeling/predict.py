@@ -8,15 +8,13 @@ import joblib
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 
-from src.ml_project.config import (
-    MODEL_PATH,
-    MODEL_PREPROCESSOR_PATH,
-    PROCESSED_METADATA_PATH,
-    PROCESSED_PREPROCESSOR_PATH,
-)
+from src.ml_project.config import (MODEL_PATH, MODEL_PREPROCESSOR_PATH,
+                                   PROCESSED_METADATA_PATH,
+                                   PROCESSED_PREPROCESSOR_PATH)
 from src.ml_project.features import add_session_features
 from src.ml_project.logging import logger
-from src.ml_project.preprocessing import encode_inference_features, validate_inference_schema
+from src.ml_project.preprocessing import (encode_inference_features,
+                                          validate_inference_schema)
 
 
 def load_inference_metadata(metadata_path: str | Path | None = None) -> dict[str, object]:

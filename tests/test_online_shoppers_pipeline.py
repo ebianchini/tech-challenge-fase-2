@@ -8,20 +8,20 @@ import pandas as pd
 import pytest
 from sklearn.linear_model import LogisticRegression
 
-from src.ml_project.config import (
-    MODEL_FEATURE_NAMES_PATH,
-    MODEL_METADATA_PATH,
-    MODEL_PREPROCESSOR_PATH,
-    MODEL_VERSION_INFO_PATH,
-    PROCESSED_METADATA_PATH,
-    PROCESSED_PREPROCESSOR_PATH,
-)
+from src.ml_project.config import (MODEL_FEATURE_NAMES_PATH,
+                                   MODEL_METADATA_PATH,
+                                   MODEL_PREPROCESSOR_PATH,
+                                   MODEL_VERSION_INFO_PATH,
+                                   PROCESSED_METADATA_PATH,
+                                   PROCESSED_PREPROCESSOR_PATH)
 from src.ml_project.dataset import drop_duplicate_rows, load_raw_dataset
 from src.ml_project.features import add_session_features
-from src.ml_project.modeling.predict import load_inference_metadata, load_preprocessor, predict
+from src.ml_project.modeling.predict import (load_inference_metadata,
+                                             load_preprocessor, predict)
 from src.ml_project.modeling.train import build_benchmark_models, train
 from src.ml_project.pipeline import prepare
-from src.ml_project.preprocessing import prepare_model_data, validate_dataset_quality
+from src.ml_project.preprocessing import (prepare_model_data,
+                                          validate_dataset_quality)
 
 
 def test_dataset_load_and_deduplication() -> None:
