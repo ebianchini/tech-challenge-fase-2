@@ -13,6 +13,7 @@ from src.ml_project.config import (
     FEATURE_COLUMNS,
     MIN_TARGET_CLASS_RATIO,
     RANDOM_STATE,
+    RAW_DATASET_COLUMNS,
     TARGET_COLUMN,
     TEST_SIZE,
 )
@@ -108,6 +109,73 @@ def build_preprocessor(features: pd.DataFrame) -> tuple[ColumnTransformer, list[
     return preprocessor, categorical_columns, numeric_columns
 
 
+def validate_inference_schema(
+    dataset: pd.DataFrame,
+    expected_columns: Iterable[str] | None = None,
+) -> pd.DataFrame:
+    """Valida o schema bruto esperado em inferencia e remove a coluna alvo quando presente."""
+    default_columns = [column for column in RAW_DATASET_COLUMNS if column != TARGET_COLUMN]
+    expected = list(expected_columns or default_columns)
+    missing_columns = sorted(set(expected) - set(dataset.columns))
+    if missing_columns:
+        raise ValueError(f"Dataset de inferencia com colunas ausentes: {missing_columns}")
+
+    inference_frame = dataset[expected].copy()
+    null_counts = inference_frame.isna().sum()
+    columns_with_nulls = null_counts[null_counts > 0]
+    if not columns_with_nulls.empty:
+        raise ValueError(
+            "Dataset de inferencia com valores nulos: "
+            f"{columns_with_nulls.to_dict()}"
+        )
+    return inference_frame
+
+
+def encode_inference_features(
+    features: pd.DataFrame,
+    metadata: dict[str, object],
+) -> pd.DataFrame:
+    """Reconstroi o encoding do treino a partir dos metadados persistidos."""
+    encoded_feature_names = metadata.get("encoded_feature_names")
+    categorical_columns = metadata.get("categorical_columns")
+    numeric_columns = metadata.get("numeric_columns")
+
+    if not isinstance(encoded_feature_names, list) or not encoded_feature_names:
+        raise ValueError("Metadados sem encoded_feature_names validos para inferencia.")
+    if not isinstance(categorical_columns, list) or not isinstance(numeric_columns, list):
+        raise ValueError("Metadados sem definicao valida de colunas categoricas e numericas.")
+
+    missing_columns = sorted(set([*categorical_columns, *numeric_columns]) - set(features.columns))
+    if missing_columns:
+        raise ValueError(f"Features de inferencia com colunas ausentes: {missing_columns}")
+
+    encoded_frame = pd.DataFrame(index=features.index)
+
+    for column in numeric_columns:
+        encoded_frame[f"numeric__{column}"] = pd.to_numeric(features[column], errors="raise")
+
+    for column in categorical_columns:
+        values = features[column].astype(str)
+        prefix = f"categorical__{column}_"
+        matching_feature_names = [
+            feature_name
+            for feature_name in encoded_feature_names
+            if feature_name.startswith(prefix)
+        ]
+        for feature_name in matching_feature_names:
+            category_value = feature_name[len(prefix) :]
+            encoded_frame[feature_name] = values.eq(category_value).astype(float)
+
+    missing_encoded_columns = sorted(set(encoded_feature_names) - set(encoded_frame.columns))
+    if missing_encoded_columns:
+        raise ValueError(
+            "Nao foi possivel reconstruir todas as colunas codificadas para inferencia: "
+            f"{missing_encoded_columns}"
+        )
+
+    return encoded_frame[encoded_feature_names]
+
+
 def prepare_model_data(
     dataset: pd.DataFrame,
     test_size: float = TEST_SIZE,
@@ -142,6 +210,7 @@ def prepare_model_data(
 
     metadata = {
         **quality_report,
+        "target_column": target_column,
         "categorical_columns": categorical_columns,
         "numeric_columns": numeric_columns,
         "encoded_feature_names": feature_names,
