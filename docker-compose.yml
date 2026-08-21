@@ -1,0 +1,38 @@
+services:
+  train:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "src.ml_project.modeling.train"]
+    environment:
+      MLFLOW_TRACKING_URI: "file:/app/mlruns"
+      MLFLOW_EXPERIMENT_NAME: "online-shoppers-purchasing-intention"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+      - ./logs:/app/logs
+
+  inference:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command:
+      [
+        "uvicorn",
+        "src.ml_project.api:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    environment:
+      MLFLOW_TRACKING_URI: "file:/app/mlruns"
+      MLFLOW_EXPERIMENT_NAME: "online-shoppers-purchasing-intention"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./mlruns:/app/mlruns
+      - ./logs:/app/logs
