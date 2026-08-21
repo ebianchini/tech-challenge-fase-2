@@ -11,6 +11,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 import yaml
+from mlflow.tracking import MlflowClient
 from sklearn.base import ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -32,12 +33,19 @@ from src.ml_project import __version__
 from src.ml_project.config import (
     CROSS_VALIDATION_FOLDS,
     INFERENCE_CONTRACT_VERSION,
+    MLFLOW_ENABLE_MODEL_REGISTRY,
     MLFLOW_EXPERIMENT_NAME,
+    MLFLOW_MODEL_APPROVAL_STATUS,
+    MLFLOW_MODEL_APPROVER,
+    MLFLOW_MODEL_INITIAL_STATUS,
+    MLFLOW_REGISTERED_MODEL_NAME,
     MLFLOW_TRACKING_URI,
     MODEL_FEATURE_NAMES_PATH,
     MODEL_METADATA_PATH,
     MODEL_PATH,
     MODEL_PREPROCESSOR_PATH,
+    MODEL_REGISTRY_EVENTS_PATH,
+    MODEL_REGISTRY_INFO_PATH,
     MODEL_VERSION_INFO_PATH,
     MODELS_DIR,
     PROCESSED_DATA_PATH,
@@ -50,6 +58,11 @@ from src.ml_project.config import (
     set_global_seed,
 )
 from src.ml_project.logging import logger
+from src.ml_project.model_registry import (
+    build_model_uri,
+    register_model_version,
+    resolve_registered_model_name,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIGS_DIR = ROOT / "configs"
@@ -338,6 +351,7 @@ def save_production_artifacts(
     metadata: dict[str, object],
     tuned_threshold: float,
     mlflow_run_id: str,
+    registry_info: dict[str, object] | None = None,
 ) -> dict[str, Path]:
     """Persiste os artefatos complementares usados pela inferencia de producao."""
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -386,6 +400,7 @@ def save_production_artifacts(
             "cv_folds": CROSS_VALIDATION_FOLDS,
         },
         "mlflow_run_id": mlflow_run_id,
+        "model_registry": registry_info,
         "dataset_fingerprint": metadata["dataset_fingerprint"],
         "target_column": metadata["target_column"],
         "feature_count": len(encoded_feature_names),
@@ -420,8 +435,9 @@ def train() -> None:
     params = yaml.safe_load(params_path.read_text(encoding="utf-8"))
     model_cfg = params["model"]
 
+    experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", MLFLOW_EXPERIMENT_NAME)
     mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", MLFLOW_TRACKING_URI))
-    mlflow.set_experiment(os.getenv("MLFLOW_EXPERIMENT_NAME", MLFLOW_EXPERIMENT_NAME))
+    mlflow.set_experiment(experiment_name)
 
     X_train, X_test, y_train, y_test, metadata = load_training_inputs()
     logger.info(
@@ -506,6 +522,59 @@ def train() -> None:
         mlflow.sklearn.log_model(classifier, artifact_path="model")
 
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        registry_info: dict[str, object] | None = None
+        if MLFLOW_ENABLE_MODEL_REGISTRY:
+            registered_model_name = resolve_registered_model_name(
+                experiment_name=experiment_name,
+                configured_name=MLFLOW_REGISTERED_MODEL_NAME,
+            )
+            registry_info = register_model_version(
+                client=MlflowClient(),
+                registered_model_name=registered_model_name,
+                model_uri=build_model_uri(run.info.run_id),
+                run_id=run.info.run_id,
+                experiment_name=experiment_name,
+                experiment_id=run.info.experiment_id,
+                status=os.getenv("MLFLOW_MODEL_INITIAL_STATUS", MLFLOW_MODEL_INITIAL_STATUS),
+                approval_status=os.getenv(
+                    "MLFLOW_MODEL_APPROVAL_STATUS",
+                    MLFLOW_MODEL_APPROVAL_STATUS,
+                ),
+                approver=os.getenv("MLFLOW_MODEL_APPROVER", MLFLOW_MODEL_APPROVER) or None,
+                metrics=tuned_metrics,
+                metadata={
+                    "dataset_fingerprint": metadata["dataset_fingerprint"],
+                    "model_type": classifier.__class__.__name__,
+                    "selected_model": "random_forest",
+                },
+                event_log_path=MODEL_REGISTRY_EVENTS_PATH,
+            )
+            MODEL_REGISTRY_INFO_PATH.write_text(
+                json.dumps(registry_info, indent=2, ensure_ascii=True),
+                encoding="utf-8",
+            )
+            mlflow.set_tags(
+                {
+                    "registered_model_name": registry_info["registered_model_name"],
+                    "registered_model_version": registry_info["version"],
+                    "governance_status": registry_info["status"],
+                    "approval_status": registry_info["approval_status"],
+                }
+            )
+        else:
+            registry_info = {
+                "enabled": False,
+                "reason": "MLFLOW_ENABLE_MODEL_REGISTRY=false",
+                "run_id": run.info.run_id,
+                "experiment_name": experiment_name,
+            }
+            MODEL_REGISTRY_INFO_PATH.write_text(
+                json.dumps(registry_info, indent=2, ensure_ascii=True),
+                encoding="utf-8",
+            )
+            if not MODEL_REGISTRY_EVENTS_PATH.exists():
+                MODEL_REGISTRY_EVENTS_PATH.write_text("[]", encoding="utf-8")
+
         joblib.dump(classifier, MODEL_PATH)
 
         production_artifacts = save_production_artifacts(
@@ -516,6 +585,7 @@ def train() -> None:
             metadata=metadata,
             tuned_threshold=tuned_threshold,
             mlflow_run_id=run.info.run_id,
+            registry_info=registry_info,
         )
 
         artifact_dir = save_artifacts(
@@ -532,6 +602,9 @@ def train() -> None:
         for artifact_name, artifact_path in production_artifacts.items():
             mlflow.log_artifact(str(artifact_path), artifact_path="production")
             logger.info("Artefato de producao persistido: {}={}", artifact_name, artifact_path)
+        if registry_info is not None:
+            mlflow.log_artifact(str(MODEL_REGISTRY_INFO_PATH), artifact_path="registry")
+            mlflow.log_artifact(str(MODEL_REGISTRY_EVENTS_PATH), artifact_path="registry")
 
         logger.info(
             "RUN_ID={} ACCURACY={:.4f} F1={:.4f} ROC_AUC={:.4f} PR_AUC={:.4f} THRESHOLD={:.4f}",

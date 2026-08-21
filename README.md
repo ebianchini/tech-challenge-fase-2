@@ -92,12 +92,45 @@ O treino passa a registrar no MLflow:
 - classificação por classe, matriz de confusão e curvas ROC/PR;
 - threshold otimizado para F1;
 - metadata de preprocessing e fingerprint do dataset.
+- versão do modelo no MLflow Model Registry, com status de governança.
 
 Para habilitar o benchmark opcional com `XGBoost`, instale o extra:
 
 ```bash
 uv sync --extra benchmark
 ```
+
+## MLflow Model Registry
+
+Cada execução de treino registra o artefato `runs:/<run_id>/model` no Model Registry quando
+`MLFLOW_ENABLE_MODEL_REGISTRY=true`. O nome do registered model é derivado do experimento
+(`online-shoppers-purchasing-intention-random-forest`) ou definido por
+`MLFLOW_REGISTERED_MODEL_NAME`.
+
+O projeto usa os status `Staging`, `Production` e `Archived` como stages e aliases do MLflow,
+além das tags `governance_status`, `approval_status`, `approved_by` e motivos de promoção ou
+rollback. O treino cria versões inicialmente em `Staging` com aprovação `pending`; promoções para
+`Production` exigem aprovador e aprovação explícita.
+
+```bash
+uv run python -m src.ml_project.model_registry promote \
+  --version 1 \
+  --target-status Production \
+  --approver "nome.aprovador" \
+  --reason "Metricas aprovadas para producao"
+```
+
+```bash
+uv run python -m src.ml_project.model_registry rollback \
+  --version 1 \
+  --approver "nome.aprovador" \
+  --reason "Regressao detectada na versao atual"
+```
+
+A trilha de governança fica registrada em `models/model_registry.json`,
+`models/model_registry_events.json` e também como artefatos do run em `registry/`. Para carregar
+a versão aprovada na inferência, configure `MLFLOW_USE_MODEL_REGISTRY_FOR_INFERENCE=true` e, se
+necessário, ajuste `MLFLOW_INFERENCE_MODEL_ALIAS=Production`.
 
 ## Automação com `just`
 

@@ -2,19 +2,31 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import joblib
+import mlflow
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 
-from src.ml_project.config import (MODEL_PATH, MODEL_PREPROCESSOR_PATH,
-                                   PROCESSED_METADATA_PATH,
-                                   PROCESSED_PREPROCESSOR_PATH)
+from src.ml_project.config import (
+    MLFLOW_INFERENCE_MODEL_ALIAS,
+    MLFLOW_INFERENCE_MODEL_URI,
+    MLFLOW_REGISTERED_MODEL_NAME,
+    MODEL_PATH,
+    MODEL_PREPROCESSOR_PATH,
+    PROCESSED_METADATA_PATH,
+    PROCESSED_PREPROCESSOR_PATH,
+)
 from src.ml_project.features import add_session_features
 from src.ml_project.logging import logger
-from src.ml_project.preprocessing import (encode_inference_features,
-                                          validate_inference_schema)
+from src.ml_project.model_registry import build_registry_model_uri
+from src.ml_project.preprocessing import encode_inference_features, validate_inference_schema
+
+
+def _env_flag(name: str, default: str = "false") -> bool:
+    return os.getenv(name, default).lower() in {"1", "true", "yes"}
 
 
 def load_inference_metadata(metadata_path: str | Path | None = None) -> dict[str, object]:
@@ -58,6 +70,45 @@ def validate_model_compatibility(model: object, inference_frame: pd.DataFrame) -
         )
 
 
+def resolve_inference_model_uri(
+    model_uri: str | None = None,
+    registered_model_name: str | None = None,
+    registry_alias: str | None = None,
+) -> str | None:
+    """Resolve a URI do Model Registry quando a inferencia estiver configurada para isso."""
+    explicit_model_uri = model_uri or os.getenv(
+        "MLFLOW_INFERENCE_MODEL_URI",
+        MLFLOW_INFERENCE_MODEL_URI or "",
+    )
+    if explicit_model_uri:
+        return explicit_model_uri
+
+    if not _env_flag("MLFLOW_USE_MODEL_REGISTRY_FOR_INFERENCE"):
+        return None
+
+    return build_registry_model_uri(
+        registered_model_name=registered_model_name
+        or os.getenv("MLFLOW_REGISTERED_MODEL_NAME", MLFLOW_REGISTERED_MODEL_NAME or ""),
+        alias=registry_alias
+        or os.getenv("MLFLOW_INFERENCE_MODEL_ALIAS", MLFLOW_INFERENCE_MODEL_ALIAS),
+    )
+
+
+def load_model_for_inference(
+    model_path: str | Path | None = None,
+    model_uri: str | None = None,
+):
+    """Carrega o modelo local ou uma versao governada pelo MLflow Model Registry."""
+    if model_uri is not None:
+        logger.info("Carregando modelo de inferencia via MLflow URI: {}", model_uri)
+        return mlflow.sklearn.load_model(model_uri)
+
+    resolved_model_path = Path(model_path or MODEL_PATH)
+    if not resolved_model_path.exists():
+        raise FileNotFoundError(f"Modelo nao encontrado em {resolved_model_path}.")
+    return joblib.load(resolved_model_path)
+
+
 def prepare_inference_frame(
     dataframe: pd.DataFrame,
     metadata: dict[str, object],
@@ -82,16 +133,20 @@ def predict(
     dataframe: pd.DataFrame | None = None,
     metadata_path: str | Path | None = None,
     preprocessor_path: str | Path | None = None,
+    model_uri: str | None = None,
+    registered_model_name: str | None = None,
+    registry_alias: str | None = None,
 ) -> pd.Series:
     """Carrega o modelo treinado, reaplica o pipeline e gera previsoes."""
     if dataframe is None:
         raise ValueError("E necessario passar um dataframe para previsao.")
 
-    resolved_model_path = Path(model_path or MODEL_PATH)
-    if not resolved_model_path.exists():
-        raise FileNotFoundError(f"Modelo nao encontrado em {resolved_model_path}.")
-
-    model = joblib.load(resolved_model_path)
+    resolved_model_uri = resolve_inference_model_uri(
+        model_uri=model_uri,
+        registered_model_name=registered_model_name,
+        registry_alias=registry_alias,
+    )
+    model = load_model_for_inference(model_path=model_path, model_uri=resolved_model_uri)
     metadata = load_inference_metadata(metadata_path)
     preprocessor = load_preprocessor(preprocessor_path)
     inference_frame = prepare_inference_frame(dataframe, metadata, preprocessor)
@@ -111,6 +166,9 @@ if __name__ == "__main__":
     parser.add_argument("--model-path", type=str, default=str(MODEL_PATH))
     parser.add_argument("--metadata-path", type=str, default=str(PROCESSED_METADATA_PATH))
     parser.add_argument("--preprocessor-path", type=str, default=None)
+    parser.add_argument("--model-uri", type=str, default=None)
+    parser.add_argument("--registered-model-name", type=str, default=None)
+    parser.add_argument("--registry-alias", type=str, default=None)
     parser.add_argument("--csv", type=str, required=True)
     args = parser.parse_args()
 
@@ -119,6 +177,9 @@ if __name__ == "__main__":
         model_path=args.model_path,
         metadata_path=args.metadata_path,
         preprocessor_path=args.preprocessor_path,
+        model_uri=args.model_uri,
+        registered_model_name=args.registered_model_name,
+        registry_alias=args.registry_alias,
         dataframe=frame,
     )
     print(result.to_string(index=False))
