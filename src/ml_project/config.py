@@ -21,6 +21,8 @@ MODEL_FEATURE_NAMES_PATH = MODELS_DIR / "feature_names.json"
 MODEL_PREPROCESSOR_PATH = MODELS_DIR / "preprocessor.joblib"
 MODEL_METADATA_PATH = MODELS_DIR / "model_metadata.json"
 MODEL_VERSION_INFO_PATH = MODELS_DIR / "version_info.json"
+MODEL_REGISTRY_INFO_PATH = MODELS_DIR / "model_registry.json"
+MODEL_REGISTRY_EVENTS_PATH = MODELS_DIR / "model_registry_events.json"
 
 TARGET_COLUMN = "Revenue"
 INFERENCE_CONTRACT_VERSION = "1.0"
@@ -43,6 +45,17 @@ set_global_seed(SEED)
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
 MLFLOW_EXPERIMENT_NAME = os.getenv("MLFLOW_EXPERIMENT_NAME", "online-shoppers-purchasing-intention")
+MLFLOW_ENABLE_MODEL_REGISTRY = os.getenv("MLFLOW_ENABLE_MODEL_REGISTRY", "true").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+MLFLOW_REGISTERED_MODEL_NAME = os.getenv("MLFLOW_REGISTERED_MODEL_NAME")
+MLFLOW_MODEL_INITIAL_STATUS = os.getenv("MLFLOW_MODEL_INITIAL_STATUS", "Staging")
+MLFLOW_MODEL_APPROVAL_STATUS = os.getenv("MLFLOW_MODEL_APPROVAL_STATUS", "pending")
+MLFLOW_MODEL_APPROVER = os.getenv("MLFLOW_MODEL_APPROVER", "")
+MLFLOW_INFERENCE_MODEL_URI = os.getenv("MLFLOW_INFERENCE_MODEL_URI")
+MLFLOW_INFERENCE_MODEL_ALIAS = os.getenv("MLFLOW_INFERENCE_MODEL_ALIAS", "Production")
 
 FEATURE_COLUMNS = [
     "Administrative",

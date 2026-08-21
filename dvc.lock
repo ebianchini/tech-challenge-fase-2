@@ -9,8 +9,8 @@ stages:
       size: 1072063
     - path: src/ml_project/config.py
       hash: md5
-      md5: 0d9c83bbe3c33c1079bdd93ce54ca3c3
-      size: 2540
+      md5: f704c79df968f69d54e628be76381102
+      size: 3271
     - path: src/ml_project/dataset.py
       hash: md5
       md5: dcb01a4e7606d3bb2747e02a2c25b9d4
@@ -21,12 +21,12 @@ stages:
       size: 2676
     - path: src/ml_project/pipeline.py
       hash: md5
-      md5: 7bd4adeade09fcb5c69416d2da512a69
-      size: 1800
+      md5: 7c8b2c71cde6cf2add4a919e3067b185
+      size: 1813
     - path: src/ml_project/preprocessing.py
       hash: md5
-      md5: 0b2b9f7c51051a797e5abbe20ca40ec1
-      size: 9178
+      md5: 821c4df61dc27ef3785b020e31c82e06
+      size: 9200
     outs:
     - path: data/interim/online_shoppers_clean.csv
       hash: md5
@@ -57,12 +57,16 @@ stages:
       size: 12561890
     - path: src/ml_project/config.py
       hash: md5
-      md5: 0d9c83bbe3c33c1079bdd93ce54ca3c3
-      size: 2540
+      md5: f704c79df968f69d54e628be76381102
+      size: 3271
+    - path: src/ml_project/model_registry.py
+      hash: md5
+      md5: fc9b152678f8f1f4ef858cfaab777fef
+      size: 17239
     - path: src/ml_project/modeling/train.py
       hash: md5
-      md5: 70ae942fbf2025bd79399ce561153e0b
-      size: 20220
+      md5: ebdbf30cf1f4691d150ea15373c93421
+      size: 23605
     outs:
     - path: models/feature_names.json
       hash: md5
@@ -74,13 +78,21 @@ stages:
       size: 8658233
     - path: models/model_metadata.json
       hash: md5
-      md5: 706fdb586fabc71656910cded4b3d63e
-      size: 7582
+      md5: d05038d5bbfc62f99e4fab102ecc26a1
+      size: 8502
+    - path: models/model_registry.json
+      hash: md5
+      md5: 840e0be381cc6d5e23f98688c9dc030b
+      size: 933
+    - path: models/model_registry_events.json
+      hash: md5
+      md5: 6a70b36167f5bd6d38492ef7b45e5134
+      size: 571
     - path: models/preprocessor.joblib
       hash: md5
       md5: 11c6f506e63f8c172b23c89eeaf6eb21
       size: 4830
     - path: models/version_info.json
       hash: md5
-      md5: 0abe57577651df0d93b5686cf8aa40cf
-      size: 2014
+      md5: 066ee660b2e9cdb44847d37ab79d0908
+      size: 1930

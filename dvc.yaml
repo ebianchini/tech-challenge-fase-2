@@ -21,9 +21,12 @@ stages:
       - data/processed/online_shoppers_metadata.json
       - src/ml_project/modeling/train.py
       - src/ml_project/config.py
+      - src/ml_project/model_registry.py
     outs:
       - models/model.joblib
       - models/feature_names.json
       - models/preprocessor.joblib
       - models/model_metadata.json
       - models/version_info.json
+      - models/model_registry.json
+      - models/model_registry_events.json
