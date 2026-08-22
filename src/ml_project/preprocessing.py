@@ -11,9 +11,14 @@ from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-from src.ml_project.config import (FEATURE_COLUMNS, MIN_TARGET_CLASS_RATIO,
-                                   RANDOM_STATE, RAW_DATASET_COLUMNS,
-                                   TARGET_COLUMN, TEST_SIZE)
+from src.ml_project.config import (
+    FEATURE_COLUMNS,
+    MIN_TARGET_CLASS_RATIO,
+    RANDOM_STATE,
+    RAW_DATASET_COLUMNS,
+    TARGET_COLUMN,
+    TEST_SIZE,
+)
 
 CATEGORICAL_COLUMNS = [
     "Month",
