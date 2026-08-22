@@ -19,7 +19,7 @@ train:
     uv run python -m src.ml_project.modeling.train
 
 api:
-    uv run uvicorn src.ml_project.api:app --host 0.0.0.0 --port 8000
+    uv run uvicorn src.api.api:app --host 0.0.0.0 --port 8000
 
 drift reference current:
     uv run python -m src.ml_project.monitoring {{reference}} {{current}}

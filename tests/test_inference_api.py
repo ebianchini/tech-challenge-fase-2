@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 from fastapi.testclient import TestClient
 
-from src.ml_project import api
+from src.api import api
 
 
 def valid_payload() -> dict[str, object]:
@@ -44,6 +44,7 @@ def test_health_endpoint_reports_service_status() -> None:
     assert payload["contract_version"] == "1.0"
     assert "model_available" in payload
     assert "metadata_available" in payload
+    assert "preprocessor_available" in payload
 
 
 def test_predict_endpoint_returns_standard_response(monkeypatch) -> None:

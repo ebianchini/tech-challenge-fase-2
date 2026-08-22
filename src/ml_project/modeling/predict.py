@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+from functools import lru_cache
 from pathlib import Path
 
 import joblib
@@ -24,10 +25,15 @@ from src.ml_project.preprocessing import (encode_inference_features,
                                           validate_inference_schema)
 
 
+class ModelSchemaMismatchError(ValueError):
+    """Indica incompatibilidade entre artefatos persistidos e entrada de inferencia."""
+
+
 def _env_flag(name: str, default: str = "false") -> bool:
     return os.getenv(name, default).lower() in {"1", "true", "yes"}
 
 
+@lru_cache(maxsize=8)
 def load_inference_metadata(metadata_path: str | Path | None = None) -> dict[str, object]:
     """Carrega os metadados do preprocessing usados para inferencia."""
     resolved_path = Path(metadata_path or PROCESSED_METADATA_PATH)
@@ -36,6 +42,7 @@ def load_inference_metadata(metadata_path: str | Path | None = None) -> dict[str
     return json.loads(resolved_path.read_text(encoding="utf-8"))
 
 
+@lru_cache(maxsize=8)
 def load_model_metadata(metadata_path: str | Path | None = None) -> dict[str, object]:
     """Carrega metadata do modelo, incluindo threshold e identificador da versao."""
     resolved_path = Path(metadata_path or MODEL_METADATA_PATH)
@@ -52,6 +59,7 @@ def resolve_prediction_threshold(model_metadata: dict[str, object]) -> float:
     return threshold
 
 
+@lru_cache(maxsize=8)
 def load_preprocessor(preprocessor_path: str | Path | None = None) -> ColumnTransformer | None:
     """Carrega o transformador ajustado quando ele estiver disponivel."""
     candidate_paths = (
@@ -72,14 +80,14 @@ def validate_model_compatibility(model: object, inference_frame: pd.DataFrame) -
         expected = list(model_feature_names)
         received = inference_frame.columns.tolist()
         if expected != received:
-            raise ValueError(
+            raise ModelSchemaMismatchError(
                 "Schema de inferencia incompativel com o modelo persistido. "
                 f"Esperado={expected} recebido={received}"
             )
 
     model_feature_count = getattr(model, "n_features_in_", None)
     if model_feature_count is not None and model_feature_count != inference_frame.shape[1]:
-        raise ValueError(
+        raise ModelSchemaMismatchError(
             "Quantidade de features incompativel com o modelo persistido. "
             f"Esperado={model_feature_count} recebido={inference_frame.shape[1]}"
         )
