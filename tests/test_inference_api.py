@@ -60,9 +60,10 @@ def test_predict_endpoint_returns_standard_response(monkeypatch) -> None:
     response = client.post("/predict", json=valid_payload())
 
     assert response.status_code == 200
-    assert response.json() == {
+    response_payload = response.json()
+    assert response_payload == {
         "contract_version": "1.0",
-        "model_version": "model.joblib",
+        "model_version": api.resolve_api_model_version(),
         "predictions": [{"prediction_id": "0", "predicted_revenue": 1}],
     }
 

@@ -10,19 +10,18 @@ import mlflow
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 
-from src.ml_project.config import (
-    MLFLOW_INFERENCE_MODEL_ALIAS,
-    MLFLOW_INFERENCE_MODEL_URI,
-    MLFLOW_REGISTERED_MODEL_NAME,
-    MODEL_PATH,
-    MODEL_PREPROCESSOR_PATH,
-    PROCESSED_METADATA_PATH,
-    PROCESSED_PREPROCESSOR_PATH,
-)
+from src.ml_project.config import (MLFLOW_INFERENCE_MODEL_ALIAS,
+                                   MLFLOW_INFERENCE_MODEL_URI,
+                                   MLFLOW_REGISTERED_MODEL_NAME,
+                                   MODEL_METADATA_PATH, MODEL_PATH,
+                                   MODEL_PREPROCESSOR_PATH,
+                                   PROCESSED_METADATA_PATH,
+                                   PROCESSED_PREPROCESSOR_PATH)
 from src.ml_project.features import add_session_features
 from src.ml_project.logging import logger
 from src.ml_project.model_registry import build_registry_model_uri
-from src.ml_project.preprocessing import encode_inference_features, validate_inference_schema
+from src.ml_project.preprocessing import (encode_inference_features,
+                                          validate_inference_schema)
 
 
 def _env_flag(name: str, default: str = "false") -> bool:
@@ -35,6 +34,22 @@ def load_inference_metadata(metadata_path: str | Path | None = None) -> dict[str
     if not resolved_path.exists():
         raise FileNotFoundError(f"Metadados de inferencia nao encontrados em {resolved_path}.")
     return json.loads(resolved_path.read_text(encoding="utf-8"))
+
+
+def load_model_metadata(metadata_path: str | Path | None = None) -> dict[str, object]:
+    """Carrega metadata do modelo, incluindo threshold e identificador da versao."""
+    resolved_path = Path(metadata_path or MODEL_METADATA_PATH)
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Metadata do modelo nao encontrada em {resolved_path}.")
+    return json.loads(resolved_path.read_text(encoding="utf-8"))
+
+
+def resolve_prediction_threshold(model_metadata: dict[str, object]) -> float:
+    """Retorna o threshold treinado e valida seu intervalo operacional."""
+    threshold = float(model_metadata.get("chosen_threshold", 0.5))
+    if not 0.0 <= threshold <= 1.0:
+        raise ValueError(f"Threshold de inferencia invalido: {threshold}")
+    return threshold
 
 
 def load_preprocessor(preprocessor_path: str | Path | None = None) -> ColumnTransformer | None:
@@ -132,6 +147,7 @@ def predict(
     model_path: str | Path | None = None,
     dataframe: pd.DataFrame | None = None,
     metadata_path: str | Path | None = None,
+    model_metadata_path: str | Path | None = None,
     preprocessor_path: str | Path | None = None,
     model_uri: str | None = None,
     registered_model_name: str | None = None,
@@ -148,6 +164,7 @@ def predict(
     )
     model = load_model_for_inference(model_path=model_path, model_uri=resolved_model_uri)
     metadata = load_inference_metadata(metadata_path)
+    model_metadata = load_model_metadata(model_metadata_path)
     preprocessor = load_preprocessor(preprocessor_path)
     inference_frame = prepare_inference_frame(dataframe, metadata, preprocessor)
     validate_model_compatibility(model, inference_frame)
@@ -157,7 +174,12 @@ def predict(
         inference_frame.shape[0],
         inference_frame.shape[1],
     )
-    predictions = model.predict(inference_frame)
+    threshold = resolve_prediction_threshold(model_metadata)
+    if not hasattr(model, "predict_proba"):
+        raise TypeError("O modelo de inferencia precisa implementar predict_proba().")
+    probabilities = model.predict_proba(inference_frame)[:, 1]
+    predictions = (probabilities >= threshold).astype(int)
+    logger.info("Threshold de inferencia aplicado: {:.6f}", threshold)
     return pd.Series(predictions, index=dataframe.index, name="predicted_revenue")
 
 

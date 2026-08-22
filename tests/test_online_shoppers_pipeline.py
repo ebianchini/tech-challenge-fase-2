@@ -17,7 +17,8 @@ from src.ml_project.config import (MODEL_FEATURE_NAMES_PATH,
 from src.ml_project.dataset import drop_duplicate_rows, load_raw_dataset
 from src.ml_project.features import add_session_features
 from src.ml_project.modeling.predict import (load_inference_metadata,
-                                             load_preprocessor, predict)
+                                             load_preprocessor, predict,
+                                             resolve_prediction_threshold)
 from src.ml_project.modeling.train import build_benchmark_models, train
 from src.ml_project.pipeline import prepare
 from src.ml_project.preprocessing import (prepare_model_data,
@@ -173,3 +174,10 @@ def test_predict_validates_model_compatibility(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="incompativel"):
         predict(model_path=invalid_model_path, dataframe=raw_input)
+
+
+def test_prediction_threshold_is_loaded_from_model_metadata() -> None:
+    assert resolve_prediction_threshold({"chosen_threshold": 0.73}) == 0.73
+
+    with pytest.raises(ValueError, match="Threshold"):
+        resolve_prediction_threshold({"chosen_threshold": 1.1})
