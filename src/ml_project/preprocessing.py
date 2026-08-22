@@ -11,14 +11,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
 
-from src.ml_project.config import (
-    FEATURE_COLUMNS,
-    MIN_TARGET_CLASS_RATIO,
-    RANDOM_STATE,
-    RAW_DATASET_COLUMNS,
-    TARGET_COLUMN,
-    TEST_SIZE,
-)
+from src.ml_project.config import (FEATURE_COLUMNS, MIN_TARGET_CLASS_RATIO,
+                                   RANDOM_STATE, RAW_DATASET_COLUMNS,
+                                   TARGET_COLUMN, TEST_SIZE)
 
 CATEGORICAL_COLUMNS = [
     "Month",
@@ -184,8 +179,9 @@ def prepare_model_data(
     random_state: int = RANDOM_STATE,
     target_column: str = TARGET_COLUMN,
     preprocessor_output_path: str | Path | None = None,
+    apply_smote: bool = False,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, dict[str, object]]:
-    """Aplica split, encoding e balanceamento SMOTE, retornando tambem metadados."""
+    """Aplica split e encoding, retornando dados sem oversampling por padrao."""
     quality_report = validate_dataset_quality(
         dataset,
         expected_columns=[*FEATURE_COLUMNS, target_column],
@@ -213,8 +209,11 @@ def prepare_model_data(
         output_path.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(preprocessor, output_path)
 
-    smote = SMOTE(random_state=random_state)
-    X_train_resampled, y_train_resampled = smote.fit_resample(X_train_encoded, y_train)
+    if apply_smote:
+        smote = SMOTE(random_state=random_state)
+        X_train_output, y_train_output = smote.fit_resample(X_train_encoded, y_train)
+    else:
+        X_train_output, y_train_output = X_train_encoded, y_train
 
     metadata = {
         **quality_report,
@@ -224,15 +223,16 @@ def prepare_model_data(
         "encoded_feature_names": feature_names,
         "train_rows": int(X_train_raw.shape[0]),
         "test_rows": int(X_test_raw.shape[0]),
-        "train_rows_resampled": int(len(y_train_resampled)),
+        "train_rows_resampled": int(len(y_train_output)),
+        "smote_applied": apply_smote,
         "test_size": float(test_size),
         "random_state": int(random_state),
     }
 
     return (
-        pd.DataFrame(X_train_resampled, columns=feature_names),
+        pd.DataFrame(X_train_output, columns=feature_names),
         pd.DataFrame(X_test_encoded, columns=feature_names),
-        pd.Series(y_train_resampled, name=target_column),
+        pd.Series(y_train_output, name=target_column),
         pd.Series(y_test.to_numpy(), name=target_column),
         metadata,
     )

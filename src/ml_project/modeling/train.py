@@ -11,58 +11,43 @@ import mlflow
 import numpy as np
 import pandas as pd
 import yaml
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
 from mlflow.tracking import MlflowClient
 from sklearn.base import ClassifierMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import (
-    accuracy_score,
-    average_precision_score,
-    classification_report,
-    confusion_matrix,
-    f1_score,
-    precision_recall_curve,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-    roc_curve,
-)
+from sklearn.metrics import (accuracy_score, average_precision_score,
+                             classification_report, confusion_matrix, f1_score,
+                             precision_recall_curve, precision_score,
+                             recall_score, roc_auc_score, roc_curve)
 from sklearn.model_selection import StratifiedKFold, cross_validate
 
 from src.ml_project import __version__
-from src.ml_project.config import (
-    CROSS_VALIDATION_FOLDS,
-    INFERENCE_CONTRACT_VERSION,
-    MLFLOW_ENABLE_MODEL_REGISTRY,
-    MLFLOW_EXPERIMENT_NAME,
-    MLFLOW_MODEL_APPROVAL_STATUS,
-    MLFLOW_MODEL_APPROVER,
-    MLFLOW_MODEL_INITIAL_STATUS,
-    MLFLOW_REGISTERED_MODEL_NAME,
-    MLFLOW_TRACKING_URI,
-    MODEL_FEATURE_NAMES_PATH,
-    MODEL_METADATA_PATH,
-    MODEL_PATH,
-    MODEL_PREPROCESSOR_PATH,
-    MODEL_REGISTRY_EVENTS_PATH,
-    MODEL_REGISTRY_INFO_PATH,
-    MODEL_VERSION_INFO_PATH,
-    MODELS_DIR,
-    PROCESSED_DATA_PATH,
-    PROCESSED_METADATA_PATH,
-    PROCESSED_PREPROCESSOR_PATH,
-    RANDOM_STATE,
-    RAW_DATASET_COLUMNS,
-    SEED,
-    TARGET_COLUMN,
-    set_global_seed,
-)
+from src.ml_project.config import (CROSS_VALIDATION_FOLDS,
+                                   INFERENCE_CONTRACT_VERSION,
+                                   MLFLOW_ENABLE_MODEL_REGISTRY,
+                                   MLFLOW_EXPERIMENT_NAME,
+                                   MLFLOW_MODEL_APPROVAL_STATUS,
+                                   MLFLOW_MODEL_APPROVER,
+                                   MLFLOW_MODEL_INITIAL_STATUS,
+                                   MLFLOW_REGISTERED_MODEL_NAME,
+                                   MLFLOW_TRACKING_URI,
+                                   MODEL_FEATURE_NAMES_PATH,
+                                   MODEL_METADATA_PATH, MODEL_PATH,
+                                   MODEL_PREPROCESSOR_PATH,
+                                   MODEL_REGISTRY_EVENTS_PATH,
+                                   MODEL_REGISTRY_INFO_PATH,
+                                   MODEL_VERSION_INFO_PATH, MODELS_DIR,
+                                   PROCESSED_DATA_PATH,
+                                   PROCESSED_METADATA_PATH,
+                                   PROCESSED_PREPROCESSOR_PATH, RANDOM_STATE,
+                                   RAW_DATASET_COLUMNS, SEED, TARGET_COLUMN,
+                                   set_global_seed)
 from src.ml_project.logging import logger
-from src.ml_project.model_registry import (
-    build_model_uri,
-    register_model_version,
-    resolve_registered_model_name,
-)
+from src.ml_project.model_registry import (build_model_uri,
+                                           register_model_version,
+                                           resolve_registered_model_name)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIGS_DIR = ROOT / "configs"
@@ -245,8 +230,14 @@ def run_benchmark(
 
     benchmark_rows: list[dict[str, float | str]] = []
     for model_name, classifier in models.items():
+        benchmark_pipeline = ImbPipeline(
+            steps=[
+                ("smote", SMOTE(random_state=RANDOM_STATE)),
+                ("classifier", classifier),
+            ]
+        )
         scores = cross_validate(
-            classifier,
+            benchmark_pipeline,
             X_train,
             y_train,
             cv=cross_validator,
@@ -461,7 +452,7 @@ def train() -> None:
             {
                 "dataset_fingerprint": metadata["dataset_fingerprint"],
                 "selected_model": "random_forest",
-                "preprocessing_stage": "encoded_split_smote",
+                "preprocessing_stage": "encoded_split_smote_per_fold",
             }
         )
 
@@ -486,7 +477,10 @@ def train() -> None:
         )
 
         logger.info("Executando treinamento final do RandomForestClassifier")
-        classifier.fit(X_train, y_train)
+        smote = SMOTE(random_state=RANDOM_STATE)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+        metadata["train_rows_resampled"] = int(len(y_train_resampled))
+        classifier.fit(X_train_resampled, y_train_resampled)
         default_metrics, probabilities = evaluate_classifier(
             classifier,
             X_test,

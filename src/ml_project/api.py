@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import time
 from typing import Any, Literal
 from uuid import uuid4
@@ -15,8 +17,26 @@ from src.ml_project.config import (INFERENCE_CONTRACT_VERSION,
                                    PROCESSED_METADATA_PATH)
 from src.ml_project.logging import logger
 from src.ml_project.modeling.predict import predict
+from src.ml_project.monitoring import record_operational_metric
 
 DEFAULT_MODEL_PATH = MODEL_PATH
+
+
+def resolve_api_model_version() -> str:
+    """Retorna a versao governada ou o run local associado ao artefato."""
+    metadata_path = MODEL_PATH.with_name("model_metadata.json")
+    if metadata_path.exists():
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        registry_info = metadata.get("model_registry") or {}
+        if os.getenv("MLFLOW_USE_MODEL_REGISTRY_FOR_INFERENCE", "false").lower() in {
+            "1",
+            "true",
+            "yes",
+        } and registry_info.get("registered_model_name") and registry_info.get("version"):
+            return f"{registry_info['registered_model_name']}:{registry_info['version']}"
+        if metadata.get("mlflow_run_id"):
+            return str(metadata["mlflow_run_id"])
+    return DEFAULT_MODEL_PATH.name
 
 
 class InferenceInstance(BaseModel):
@@ -102,6 +122,14 @@ def create_app() -> FastAPI:
             response = await call_next(request)
         except Exception:
             elapsed_ms = (time.perf_counter() - started_at) * 1000
+            record_operational_metric(
+                "http_request",
+                request_id=request_id,
+                method=request.method,
+                path=request.url.path,
+                status_code=500,
+                latency_ms=round(elapsed_ms, 3),
+            )
             logger.exception(
                 "REQUEST_ID={} METHOD={} PATH={} STATUS=500 LATENCY_MS={:.2f}",
                 request_id,
@@ -113,6 +141,14 @@ def create_app() -> FastAPI:
 
         elapsed_ms = (time.perf_counter() - started_at) * 1000
         response.headers["X-Request-ID"] = request_id
+        record_operational_metric(
+            "http_request",
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=response.status_code,
+            latency_ms=round(elapsed_ms, 3),
+        )
         logger.info(
             "REQUEST_ID={} METHOD={} PATH={} STATUS={} LATENCY_MS={:.2f}",
             request_id,
@@ -180,15 +216,22 @@ def create_app() -> FastAPI:
             PredictionItem(prediction_id=str(index), predicted_revenue=int(value))
             for index, value in enumerate(predictions.tolist())
         ]
+        model_version = resolve_api_model_version()
+        record_operational_metric(
+            "prediction",
+            instances=len(prediction_items),
+            model_version=model_version,
+            predicted_positive=sum(item.predicted_revenue for item in prediction_items),
+        )
         logger.info(
             "Predicao concluida: contract_version={} instances={} model_version={}",
             payload.contract_version,
             len(prediction_items),
-            DEFAULT_MODEL_PATH.name,
+            model_version,
         )
         return PredictResponse(
             contract_version=payload.contract_version,
-            model_version=DEFAULT_MODEL_PATH.name,
+            model_version=model_version,
             predictions=prediction_items,
         )
 

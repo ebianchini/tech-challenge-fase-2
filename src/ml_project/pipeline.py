@@ -6,15 +6,10 @@ from pathlib import Path
 
 import numpy as np
 
-from src.ml_project.config import (
-    DATA_DIR,
-    PROCESSED_DATA_PATH,
-    PROCESSED_DIR,
-    PROCESSED_METADATA_PATH,
-    PROCESSED_PREPROCESSOR_PATH,
-    RANDOM_STATE,
-    TEST_SIZE,
-)
+from src.ml_project.config import (DATA_DIR, PROCESSED_DATA_PATH,
+                                   PROCESSED_DIR, PROCESSED_METADATA_PATH,
+                                   PROCESSED_PREPROCESSOR_PATH, RANDOM_STATE,
+                                   TEST_SIZE)
 from src.ml_project.dataset import prepare_interim_dataset
 from src.ml_project.features import add_session_features
 from src.ml_project.preprocessing import prepare_model_data
@@ -32,6 +27,7 @@ def prepare() -> Path:
         test_size=TEST_SIZE,
         random_state=RANDOM_STATE,
         preprocessor_output_path=PROCESSED_PREPROCESSOR_PATH,
+        apply_smote=False,
     )
 
     np.savez(

@@ -45,7 +45,13 @@ uv sync --extra dev
 
 > Recomendação: use Python 3.11 a 3.13. O projeto evita o uso do MLflow completo para reduzir o custo de instalação em ambientes Windows.
 
-Para ativar o ambiente virtual local:
+Para ativar o ambiente virtual local no PowerShell:
+
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Em shells Unix:
 
 ```bash
 source .venv/bin/activate
@@ -83,6 +89,15 @@ Para executar a API localmente:
 ```bash
 just api
 ```
+
+Para executar uma checagem de drift entre dois CSVs:
+
+```bash
+just drift reference=data/reference.csv current=data/current.csv
+```
+
+O resultado é salvo em `models/reports/drift_report.json` e os eventos operacionais em
+`logs/operational_metrics.jsonl`.
 
 O treino passa a registrar no MLflow:
 
@@ -144,11 +159,26 @@ just serve-docs
 
 ## Variáveis de ambiente
 
-Copie o arquivo `.env.example` para `.env` e ajuste os valores.
+Copie o arquivo `.env.example` para `.env` e ajuste os valores. Em produção, o serviço de
+inferência usa o alias `Production` do Model Registry no Docker Compose; fora do container,
+o fallback local deve ser habilitado explicitamente com
+`MLFLOW_USE_MODEL_REGISTRY_FOR_INFERENCE=false`.
 
 ## Docker
 
 O `Dockerfile` utiliza multi-stage build, separando a etapa de build da etapa de runtime.
+
+Para validar as imagens e executar um smoke test:
+
+```bash
+just docker-build
+just docker-smoke
+```
+
+O smoke test desabilita explicitamente o Model Registry porque o backend filesystem do MLflow
+não suporta criação de versões em alguns volumes bind-mounted com usuário não-root. Para
+governança em container, use um backend MLflow/DB compartilhado e habilite
+`MLFLOW_ENABLE_MODEL_REGISTRY=true`.
 
 ## Contribuição
 

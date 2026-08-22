@@ -12,11 +12,24 @@ lint:
 test:
     uv run pytest -q
 
+test-python:
+    uv run python -m pytest -q
+
 train:
     uv run python -m src.ml_project.modeling.train
 
 api:
     uv run uvicorn src.ml_project.api:app --host 0.0.0.0 --port 8000
+
+drift reference current:
+    uv run python -m src.ml_project.monitoring {{reference}} {{current}}
+
+docker-build:
+    docker compose build
+
+docker-smoke:
+    docker compose run --rm train python -m src.ml_project.pipeline prepare
+    docker compose run --rm -e MLFLOW_ENABLE_MODEL_REGISTRY=false train python -m src.ml_project.modeling.train
 
 # Inicializa o DVC no projeto (caso ainda não tenha sido feito)
 dvc-init:
