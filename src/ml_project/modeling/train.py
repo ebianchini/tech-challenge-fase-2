@@ -259,6 +259,56 @@ def run_benchmark(
     return benchmark_df, skipped_models
 
 
+def build_random_forest(model_cfg: dict[str, object]) -> RandomForestClassifier:
+    """Cria o classificador final a partir dos parametros do projeto."""
+    return RandomForestClassifier(
+        n_estimators=model_cfg.get("n_estimators", 200),
+        max_depth=model_cfg.get("max_depth", 10),
+        min_samples_leaf=model_cfg.get("min_samples_leaf", 2),
+        class_weight="balanced",
+        random_state=model_cfg.get("random_state", RANDOM_STATE),
+    )
+
+
+def log_benchmark_metrics(benchmark_df: pd.DataFrame, skipped_models: list[str]) -> None:
+    """Registra no MLflow as métricas agregadas do benchmark."""
+    for _, row in benchmark_df.iterrows():
+        model_name = str(row["model_name"])
+        mlflow.log_metric(f"{model_name}_cv_f1_mean", float(row["f1_mean"]))
+        mlflow.log_metric(f"{model_name}_cv_roc_auc_mean", float(row["roc_auc_mean"]))
+        mlflow.log_metric(f"{model_name}_cv_pr_auc_mean", float(row["pr_auc_mean"]))
+    mlflow.log_param("optional_benchmark_models_skipped", ",".join(skipped_models) or "none")
+
+
+def fit_and_evaluate(
+    classifier: RandomForestClassifier,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    X_test: pd.DataFrame,
+    y_test: pd.Series,
+) -> tuple[dict[str, float], dict[str, float], np.ndarray, float, float, int]:
+    """Aplica SMOTE no treino final, ajusta o modelo e calcula suas métricas."""
+    smote = SMOTE(random_state=RANDOM_STATE)
+    X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
+    classifier.fit(X_train_resampled, y_train_resampled)
+    default_metrics, probabilities = evaluate_classifier(classifier, X_test, y_test, threshold=0.5)
+    tuned_threshold, tuned_f1 = find_best_threshold(y_test, probabilities)
+    tuned_metrics, _ = evaluate_classifier(
+        classifier,
+        X_test,
+        y_test,
+        threshold=tuned_threshold,
+    )
+    return (
+        default_metrics,
+        tuned_metrics,
+        probabilities,
+        tuned_threshold,
+        tuned_f1,
+        len(y_train_resampled),
+    )
+
+
 def save_artifacts(
     benchmark_df: pd.DataFrame,
     default_metrics: dict[str, float],
@@ -439,13 +489,7 @@ def train() -> None:
         metadata["dataset_fingerprint"],
     )
 
-    classifier = RandomForestClassifier(
-        n_estimators=model_cfg.get("n_estimators", 200),
-        max_depth=model_cfg.get("max_depth", 10),
-        min_samples_leaf=model_cfg.get("min_samples_leaf", 2),
-        class_weight="balanced",
-        random_state=model_cfg.get("random_state", RANDOM_STATE),
-    )
+    classifier = build_random_forest(model_cfg)
 
     with mlflow.start_run() as run:
         mlflow.set_tags(
@@ -457,12 +501,7 @@ def train() -> None:
         )
 
         benchmark_df, skipped_models = run_benchmark(X_train, y_train, classifier)
-        for _, row in benchmark_df.iterrows():
-            model_name = str(row["model_name"])
-            mlflow.log_metric(f"{model_name}_cv_f1_mean", float(row["f1_mean"]))
-            mlflow.log_metric(f"{model_name}_cv_roc_auc_mean", float(row["roc_auc_mean"]))
-            mlflow.log_metric(f"{model_name}_cv_pr_auc_mean", float(row["pr_auc_mean"]))
-        mlflow.log_param("optional_benchmark_models_skipped", ",".join(skipped_models) or "none")
+        log_benchmark_metrics(benchmark_df, skipped_models)
 
         if skipped_models:
             logger.warning(
@@ -477,23 +516,21 @@ def train() -> None:
         )
 
         logger.info("Executando treinamento final do RandomForestClassifier")
-        smote = SMOTE(random_state=RANDOM_STATE)
-        X_train_resampled, y_train_resampled = smote.fit_resample(X_train, y_train)
-        metadata["train_rows_resampled"] = int(len(y_train_resampled))
-        classifier.fit(X_train_resampled, y_train_resampled)
-        default_metrics, probabilities = evaluate_classifier(
+        (
+            default_metrics,
+            tuned_metrics,
+            probabilities,
+            tuned_threshold,
+            tuned_f1,
+            train_rows_resampled,
+        ) = fit_and_evaluate(
             classifier,
+            X_train,
+            y_train,
             X_test,
             y_test,
-            threshold=0.5,
         )
-        tuned_threshold, tuned_f1 = find_best_threshold(y_test, probabilities)
-        tuned_metrics, _ = evaluate_classifier(
-            classifier,
-            X_test,
-            y_test,
-            threshold=tuned_threshold,
-        )
+        metadata["train_rows_resampled"] = train_rows_resampled
 
         mlflow.log_params(
             {
