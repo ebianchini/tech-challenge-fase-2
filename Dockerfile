@@ -37,6 +37,7 @@ COPY configs /app/configs
 COPY data /app/data
 COPY params.yaml /app/params.yaml
 COPY dvc.yaml /app/dvc.yaml
+COPY models /app/models
 
 RUN mkdir -p /app/logs /app/mlruns /app/models \
   && chown -R app:app /app /opt/venv \
@@ -44,4 +45,6 @@ RUN mkdir -p /app/logs /app/mlruns /app/models \
 
 USER app
 
-CMD ["python", "-m", "src.ml_project.modeling.train"]
+EXPOSE 8000
+
+CMD ["uvicorn", "src.api.api:app", "--host", "0.0.0.0", "--port", "8000"]

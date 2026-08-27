@@ -18,8 +18,10 @@ htmlcov/
 
 # Project artifacts
 .dvc/
+mlruns/
 *.pkl
-*.joblib
+models/reports/
+data/processed/online_shoppers_processed.npz
 
 # Local env
 .env

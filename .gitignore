@@ -18,6 +18,7 @@ mlruns/
 models/
 !models/.gitkeep
 artifacts/
+dist/
 .dvc/cache/
 .dvc/tmp/
 .dvc/config.local
